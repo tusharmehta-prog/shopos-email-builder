@@ -302,7 +302,7 @@ export default function App() {
 
         {/* Right: preview */}
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', background: '#FAFAFA' }}>
-          <Preview data={emailData} viewportMode={viewportMode} onViewportChange={setViewportMode} />
+          <Preview data={emailData} viewportMode={viewportMode} onViewportChange={setViewportMode} onChange={updateField} contactProperties={contactProperties} />
         </div>
 
       </div>

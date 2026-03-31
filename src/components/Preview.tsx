@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Monitor, Smartphone, Download, Copy, Check, FileText, ClipboardCheck } from 'lucide-react';
-import type { EmailData, ViewportMode } from '../types';
+import type { EmailData, ViewportMode, LoopsContactProperty } from '../types';
 import { renderPreviewHTML } from '../lib/renderer';
 import { exportZip, copyMJML } from '../lib/export';
+import { InlineCanvas } from './InlineCanvas';
 
 interface Props {
   data: EmailData;
   viewportMode: ViewportMode;
   onViewportChange: (m: ViewportMode) => void;
+  onChange: <K extends keyof EmailData>(key: K, value: EmailData[K]) => void;
+  contactProperties: LoopsContactProperty[];
 }
 
 type ActiveView = 'email' | 'plaintext' | 'preflight';
@@ -84,21 +87,11 @@ function PreflightPanel({ data }: { data: EmailData }) {
   );
 }
 
-export function Preview({ data, viewportMode, onViewportChange }: Props) {
-  const [debouncedData, setDebouncedData] = useState(data);
+export function Preview({ data, viewportMode, onViewportChange, onChange, contactProperties }: Props) {
   const [copiedMJML, setCopiedMJML] = useState(false);
   const [copiedHTML, setCopiedHTML] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('email');
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setDebouncedData(data), 300);
-    return () => clearTimeout(timerRef.current);
-  }, [data]);
-
-  const html = renderPreviewHTML(debouncedData);
   const previewWidth = viewportMode === 'mobile' ? 375 : 600;
 
   const handleExport = async () => {
@@ -108,6 +101,7 @@ export function Preview({ data, viewportMode, onViewportChange }: Props) {
 
   const handleCopyMJML = () => { copyMJML(data); setCopiedMJML(true); setTimeout(() => setCopiedMJML(false), 2000); };
   const handleCopyHTML = () => { navigator.clipboard.writeText(renderPreviewHTML(data)); setCopiedHTML(true); setTimeout(() => setCopiedHTML(false), 2000); };
+  const debouncedData = data; // canvas edits live, plain text / preflight use live data
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -254,15 +248,9 @@ export function Preview({ data, viewportMode, onViewportChange }: Props) {
           <div style={{
             width: previewWidth, transition: 'width 0.2s ease',
             boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 0 0 1px #E5E5E5',
-            borderRadius: 8, overflow: 'hidden', background: '#0A0A0A',
+            borderRadius: 8, overflow: 'hidden',
           }}>
-            <iframe
-              srcDoc={html}
-              title="Email preview"
-              style={{ width: '100%', border: 'none', display: 'block' }}
-              height={900}
-              sandbox="allow-same-origin"
-            />
+            <InlineCanvas data={data} onChange={onChange} contactProperties={contactProperties} />
           </div>
         </div>
       )}

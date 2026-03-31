@@ -23,7 +23,10 @@ export function getStoredProperties(): LoopsContactProperty[] | null {
 }
 
 export async function fetchContactProperties(apiKey: string): Promise<LoopsContactProperty[]> {
-  const res = await fetch('https://api.loops.so/v1/contacts/customFields', {
+  // Use Vite proxy in dev to bypass CORS; direct in prod (needs server-side proxy)
+  const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+  const base = isDev ? '/loops-api' : 'https://api.loops.so';
+  const res = await fetch(`${base}/v1/contacts/customFields`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`Loops API error ${res.status}: ${await res.text()}`);
