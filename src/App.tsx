@@ -328,7 +328,7 @@ export default function App() {
         </section>
 
         {/* Right: preview */}
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', background: '#FAFAFA' }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', background: '#FAFAFA', display: 'flex', flexDirection: 'column' }}>
           <Preview data={emailData} viewportMode={viewportMode} onViewportChange={setViewportMode} onChange={updateField} contactProperties={contactProperties} />
         </div>
 

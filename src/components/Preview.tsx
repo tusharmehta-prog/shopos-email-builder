@@ -104,7 +104,7 @@ export function Preview({ data, viewportMode, onViewportChange, onChange, contac
   const debouncedData = data; // canvas edits live, plain text / preflight use live data
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
       {/* Row 1: Inbox mockup (white, only on email tab) */}
       {activeView === 'email' && (
