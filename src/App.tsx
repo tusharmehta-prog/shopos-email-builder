@@ -86,10 +86,25 @@ export default function App() {
       setShowLoopsConnect(false);
       setLoopsApiKeyInput('');
     } catch (e) {
-      setLoopsError(e instanceof Error ? e.message : 'Failed to connect');
+      const msg = e instanceof Error ? e.message : 'Failed to connect';
+      // 500 with empty body often means wrong key format or Loops server issue
+      if (msg.includes('500') || msg.includes('Failed to fetch')) {
+        setLoopsError('Loops returned an error. Check your API key (Settings → API in Loops). You can also skip and use default properties.');
+      } else {
+        setLoopsError(msg);
+      }
     } finally {
       setLoopsConnecting(false);
     }
+  };
+
+  const handleSkipLoops = () => {
+    // Save key anyway (might work later), proceed with defaults
+    if (loopsApiKeyInput.trim()) saveApiKey(loopsApiKeyInput.trim());
+    setContactProperties(DEFAULT_MERGE_PROPS);
+    setShowLoopsConnect(false);
+    setLoopsError('');
+    setLoopsApiKeyInput('');
   };
 
   const handleLoopsDisconnect = () => {
@@ -187,7 +202,19 @@ export default function App() {
                     onBlur={e => (e.currentTarget.style.borderColor = '#2A2A2A')}
                     autoFocus
                   />
-                  {loopsError && <p style={{ margin: '0 0 8px', fontSize: 11, color: '#EA580C' }}>{loopsError}</p>}
+                  {loopsError && (
+                    <div style={{ marginBottom: 8 }}>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, color: '#EA580C', lineHeight: 1.5 }}>{loopsError}</p>
+                      {loopsError.includes('skip') && (
+                        <button
+                          onClick={handleSkipLoops}
+                          style={{ fontSize: 11, color: '#737373', background: 'none', border: '1px solid #2A2A2A', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                          Use default properties →
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <button
                     onClick={handleLoopsConnect}
                     disabled={loopsConnecting}

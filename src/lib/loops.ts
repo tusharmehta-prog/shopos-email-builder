@@ -29,7 +29,13 @@ export async function fetchContactProperties(apiKey: string): Promise<LoopsConta
   const res = await fetch(`${base}/v1/contacts/customFields`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
-  if (!res.ok) throw new Error(`Loops API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    let body = '';
+    try { body = await res.text(); } catch { /* ignore */ }
+    let detail = body.trim();
+    try { const j = JSON.parse(detail); detail = j.message || j.error || detail; } catch { /* not json */ }
+    throw new Error(`Loops API error ${res.status}${detail ? `: ${detail}` : ''}`);
+  }
   const data = await res.json() as Array<{ key: string; label: string }>;
 
   // Merge built-in Loops properties with custom ones
