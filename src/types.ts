@@ -6,6 +6,12 @@ export interface BodyParagraph {
   id: string;
   html: string;       // can contain <a>, <strong>, <em>
   align: Alignment;
+  fontSize?: number;  // px, defaults to 16
+}
+
+export interface LoopsContactProperty {
+  key: string;
+  label: string;
 }
 
 export interface SocialLink {

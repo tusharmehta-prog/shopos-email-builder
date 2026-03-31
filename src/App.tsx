@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, Settings, LayoutDashboard, Users, HelpCircle } from 'lucide-react';
-import type { EmailData, ViewportMode } from './types';
+import { Mail, Settings, LayoutDashboard, Users, HelpCircle, Zap, X, Check, Loader } from 'lucide-react';
+import type { EmailData, ViewportMode, LoopsContactProperty } from './types';
 import { TEMPLATE_DEFAULTS, DEFAULT_EMAIL_DATA } from './lib/templates';
 import { TemplatePicker } from './components/TemplatePicker';
 import { LogoUpload } from './components/LogoUpload';
@@ -8,6 +8,7 @@ import { CopyEditor } from './components/CopyEditor';
 import { StylePanel } from './components/StylePanel';
 import { Preview } from './components/Preview';
 import { exportZip } from './lib/export';
+import { getStoredApiKey, saveApiKey, clearApiKey, getStoredProperties, fetchContactProperties, DEFAULT_MERGE_PROPS } from './lib/loops';
 
 type Tab = 'content' | 'style';
 
@@ -40,6 +41,14 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('content');
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [showLoopsConnect, setShowLoopsConnect] = useState(false);
+  const [loopsApiKeyInput, setLoopsApiKeyInput] = useState('');
+  const [loopsConnecting, setLoopsConnecting] = useState(false);
+  const [loopsError, setLoopsError] = useState('');
+  const [contactProperties, setContactProperties] = useState<LoopsContactProperty[]>(() => {
+    return getStoredProperties() ?? DEFAULT_MERGE_PROPS;
+  });
+  const isLoopsConnected = getStoredApiKey().length > 0;
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const savedAgo = useSavedAgo(savedAt);
 
@@ -64,6 +73,29 @@ export default function App() {
   const handlePublish = async () => {
     setPublishing(true);
     try { await exportZip(emailData); } finally { setPublishing(false); }
+  };
+
+  const handleLoopsConnect = async () => {
+    if (!loopsApiKeyInput.trim()) return;
+    setLoopsConnecting(true);
+    setLoopsError('');
+    try {
+      const props = await fetchContactProperties(loopsApiKeyInput.trim());
+      saveApiKey(loopsApiKeyInput.trim());
+      setContactProperties(props);
+      setShowLoopsConnect(false);
+      setLoopsApiKeyInput('');
+    } catch (e) {
+      setLoopsError(e instanceof Error ? e.message : 'Failed to connect');
+    } finally {
+      setLoopsConnecting(false);
+    }
+  };
+
+  const handleLoopsDisconnect = () => {
+    clearApiKey();
+    setContactProperties(DEFAULT_MERGE_PROPS);
+    setShowLoopsConnect(false);
   };
 
   const sideIcons = [
@@ -96,8 +128,83 @@ export default function App() {
             ))}
           </nav>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
           {savedAgo && <span style={{ fontSize: 11, color: '#525252', marginRight: 4 }}>{savedAgo}</span>}
+
+          {/* Loops connect button */}
+          <button
+            onClick={() => { setShowLoopsConnect(v => !v); setLoopsError(''); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              height: 28, padding: '0 12px', borderRadius: 9999, border: '1px solid',
+              borderColor: isLoopsConnected ? '#1ca64d' : '#2A2A2A',
+              background: isLoopsConnected ? 'rgba(28,166,77,0.1)' : 'transparent',
+              color: isLoopsConnected ? '#1ca64d' : '#A3A3A3',
+              fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 150ms',
+            }}
+          >
+            <Zap size={10} />
+            {isLoopsConnected ? 'Loops connected' : 'Connect Loops'}
+          </button>
+
+          {/* Loops connect dropdown */}
+          {showLoopsConnect && (
+            <div style={{
+              position: 'absolute', top: 36, right: 0, width: 320,
+              background: '#1C1B1B', border: '1px solid #2A2A2A', borderRadius: 10,
+              padding: 16, zIndex: 100, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#FAFAFA' }}>Connect to Loops</span>
+                <button onClick={() => setShowLoopsConnect(false)} style={{ background: 'none', border: 'none', color: '#525252', cursor: 'pointer', padding: 2 }}><X size={12} /></button>
+              </div>
+              {isLoopsConnected ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'rgba(28,166,77,0.1)', borderRadius: 6, marginBottom: 10 }}>
+                    <Check size={12} color="#1ca64d" />
+                    <span style={{ fontSize: 12, color: '#1ca64d' }}>Connected — {contactProperties.length} properties loaded</span>
+                  </div>
+                  <button onClick={handleLoopsDisconnect} style={{ width: '100%', height: 30, borderRadius: 6, border: '1px solid #2A2A2A', background: 'transparent', color: '#737373', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ margin: '0 0 10px', fontSize: 11, color: '#737373', lineHeight: 1.5 }}>
+                    Enter your Loops API key to pull your contact properties into the variable picker.
+                  </p>
+                  <input
+                    value={loopsApiKeyInput}
+                    onChange={e => setLoopsApiKeyInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleLoopsConnect()}
+                    placeholder="loops_api_key_..."
+                    style={{
+                      width: '100%', height: 34, background: '#131313', border: '1px solid #2A2A2A',
+                      borderRadius: 6, padding: '0 10px', fontSize: 12, color: '#FAFAFA',
+                      fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box', marginBottom: 8,
+                    }}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#525252')}
+                    onBlur={e => (e.currentTarget.style.borderColor = '#2A2A2A')}
+                    autoFocus
+                  />
+                  {loopsError && <p style={{ margin: '0 0 8px', fontSize: 11, color: '#EA580C' }}>{loopsError}</p>}
+                  <button
+                    onClick={handleLoopsConnect}
+                    disabled={loopsConnecting}
+                    style={{
+                      width: '100%', height: 30, borderRadius: 6, border: 'none',
+                      background: loopsConnecting ? '#2A2A2A' : '#FFFFFF', color: loopsConnecting ? '#525252' : '#000',
+                      fontSize: 11, fontWeight: 700, cursor: loopsConnecting ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    {loopsConnecting ? <><Loader size={10} />Connecting...</> : 'Connect'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button style={{
             height: 28, padding: '0 14px', borderRadius: 9999, border: '1px solid #2A2A2A',
             background: 'transparent', color: '#A3A3A3', fontSize: 11, fontWeight: 600,
@@ -187,7 +294,7 @@ export default function App() {
           {/* Scrollable content */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {tab === 'content'
-              ? <CopyEditor data={emailData} onChange={updateField} />
+              ? <CopyEditor data={emailData} onChange={updateField} contactProperties={contactProperties} />
               : <StylePanel data={emailData} onChange={updateField} />
             }
           </div>

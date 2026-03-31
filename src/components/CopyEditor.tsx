@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import type { EmailData, Alignment } from '../types';
+import type { EmailData, Alignment, LoopsContactProperty } from '../types';
 import { checkGuardrails, subjectLineHints, wordCountWarning } from '../lib/guardrails';
 import { RichParagraph } from './RichParagraph';
 
@@ -8,6 +8,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 interface Props {
   data: EmailData;
   onChange: <K extends keyof EmailData>(key: K, value: EmailData[K]) => void;
+  contactProperties: LoopsContactProperty[];
 }
 
 // Dark panel design tokens
@@ -94,8 +95,8 @@ function SectionHeader({ title }: { title: string }) {
   return <div style={{ padding: '18px 20px 0' }}><p style={D.sectionLabel}>{title}</p></div>;
 }
 
-export function CopyEditor({ data, onChange }: Props) {
-  const updateParagraph = (id: string, field: 'html' | 'align', value: string) => {
+export function CopyEditor({ data, onChange, contactProperties }: Props) {
+  const updateParagraph = (id: string, field: 'html' | 'align' | 'fontSize', value: string | number) => {
     onChange('bodyParagraphs', data.bodyParagraphs.map(p =>
       p.id === id ? { ...p, [field]: value } : p
     ));
@@ -161,10 +162,13 @@ export function CopyEditor({ data, onChange }: Props) {
                     id={p.id}
                     html={p.html}
                     align={p.align}
+                    fontSize={p.fontSize ?? 16}
                     placeholder={`Paragraph ${i + 1}`}
                     canRemove={data.bodyParagraphs.length > 1}
+                    contactProperties={contactProperties}
                     onChange={html => updateParagraph(p.id, 'html', html)}
                     onAlignChange={a => updateParagraph(p.id, 'align', a)}
+                    onFontSizeChange={size => updateParagraph(p.id, 'fontSize', size)}
                     onRemove={() => removeParagraph(p.id)}
                   />
                   {wcWarn && <div style={D.warning}><span>⚠</span><span>{wcWarn}</span></div>}
